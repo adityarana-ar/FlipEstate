@@ -1,0 +1,21 @@
+import random
+
+# Define a list of greetings and responses
+greetings = ["hello", "hi", "hey"]
+responses = ["Hello!", "Hi there!", "Hey! How can I help you?"]
+
+# Function to get a response from the chatbot
+def get_response(input_text):
+    input_text = input_text.lower()
+    if input_text in greetings:
+        return random.choice(responses)
+    else:
+        return "I'm sorry, I don't understand."
+
+# Main loop for the chatbot
+while True:
+    user_input = input("You: ")
+    if user_input.lower() == 'quit':
+        break
+    response = get_response(user_input)
+    print(f"Bot: {response}")
