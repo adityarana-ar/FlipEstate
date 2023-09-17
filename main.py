@@ -4,14 +4,15 @@ import random
 import pandas as pd
 import locale  # Import the locale module
 import re
-from PIL import Image
+from PIL import Image, ImageDraw
+from io import BytesIO
 
 
 
 # Streamlit app title and page layout
 st.set_page_config(page_title="*FlipEstate*", layout="centered")
-col1,col2,col3 = st.columns(3)
-with col2:
+col5,col6,col7 = st.columns(3)
+with col6:
     st.title("FlipEstate")
 
 data = pd.read_csv('predicted_prices_final.csv')
@@ -56,24 +57,31 @@ def display_street_view(lat, lon):
             <img src="data:image/png;base64,{response.content}" alt="Google Street View" style="width: 100%; height: auto;">
         </div>
         """
+        image_bytes = BytesIO(response.content)
+        image = Image.open(image_bytes)
         # Display the rounded Street View image
-        st.image(response.content, use_column_width=True)
+        st.image(round_corners(image,50), use_column_width=True)
         
     else:
         st.error("Error fetching Street View image. Please check your address and API Key.")
 
 
-def crop_corners(image, corner_size):
-    width, height = image.size
-    top_left = image.crop((0, 0, corner_size, corner_size))
-    top_right = image.crop((width - corner_size, 0, width, corner_size))
-    bottom_left = image.crop((0, height - corner_size, corner_size, height))
-    bottom_right = image.crop((width - corner_size, height - corner_size, width, height))
-    return top_left, top_right, bottom_left, bottom_right
+# Function to round the corners of a PIL image
+def round_corners(pil_image, corner_radius):
+    circle = Image.new('L', (corner_radius * 2, corner_radius * 2), 0)
+    draw = ImageDraw.Draw(circle)
+    draw.ellipse((0, 0, corner_radius * 2, corner_radius * 2), fill=255)
+    alpha = Image.new('L', pil_image.size, 255)
+    w, h = pil_image.size
+    alpha.paste(circle.crop((0, 0, corner_radius, corner_radius)), (0, 0))
+    alpha.paste(circle.crop((0, corner_radius, corner_radius, corner_radius * 2)), (0, h - corner_radius))
+    alpha.paste(circle.crop((corner_radius, 0, corner_radius * 2, corner_radius)), (w - corner_radius, 0))
+    alpha.paste(circle.crop((corner_radius, corner_radius, corner_radius * 2, corner_radius * 2)), (w - corner_radius, h - corner_radius))
+    pil_image.putalpha(alpha)
+    return pil_image
 
-def showProperty():
-    # User input for address with autocomplete
-    randomIndex = random.randint(0, len(data))
+def showProperty(index):
+    
     random_address = data.at[randomIndex, 'address']
     # Convert the entered address to coordinates
     coordinates = get_coordinates_from_address(random_address)
@@ -81,7 +89,16 @@ def showProperty():
     if coordinates:
         lat, lon = coordinates
         display_street_view(lat, lon)
-        col1, col2 = st.columns(2)
+        left_column, middle_column, right_column = st.columns(3)
+        with middle_column:
+            st.write("Predicted Price:", format_currency(data.at[randomIndex, "predicted_price"]))
+            st.write("Bed:",data.at[randomIndex, "bedroom_number"])
+        with left_column:
+            st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
+            st.write("Bed:",data.at[randomIndex, "bathroom_number"])
+        with right_column:
+            st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
+            st.write("SQFT:",data.at[randomIndex, "living_space"])
 
     else:
         st.error("Invalid address or unable to retrieve coordinates.")
@@ -92,42 +109,42 @@ def showProperty():
 def format_currency(number):
     formatted = re.sub(r'(?<=\d)(?=(\d{3})+(?!\d))', ',', str(number))  # Add commas for thousands separators
     return f"${formatted}"  # Add the dollar sign
+
 saved_properties = []
-def update():
-    st.header("Property Details")
     
 
- 
-    
-left_column, middle_column, right_column = st.columns(3)
+col1,col2 = st.columns(2)
 
-col1, col2 = st.columns(2)
 # Display the Street View image when the user clicks a button
 if col1.button("Save Property"):
     saved_properties.append(randomIndex)
-    showProperty()
+    # User input for address with autocomplete
+    randomIndex = random.randint(0, len(data))
+    showProperty(randomIndex)
     
-    with middle_column:
-        st.write("Predicted Price:", format_currency(data.at[randomIndex, "predicted_price"]))
-        st.write("Bed:",data.at[randomIndex, "bedroom_number"])
-    with left_column:
-        st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
-        st.write("Bed:",data.at[randomIndex, "bathroom_number"])
-    with right_column:
-        st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
-        st.write("SQFT:",data.at[randomIndex, "living_space"])
-
+    
  # Display the Street View image when the user clicks a button
 if col2.button("Show Property"):
-    showProperty()
-    with middle_column:
-        st.write("Predicted Price:", format_currency(data.at[randomIndex, "predicted_price"]))
-        st.write("Bed:",data.at[randomIndex, "bedroom_number"])
-    with left_column:
-        st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
-        st.write("Bed:",data.at[randomIndex, "bathroom_number"])
-    with right_column:
-        st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
-        st.write("SQFT:",data.at[randomIndex, "living_space"])
+    randomIndex = random.randint(0, len(data))
+    showProperty(randomIndex)
+
+
+
+
+from streamlit_option_menu import option_menu
+
+with st.sidebar:
+    selected = option_menu("Main Menu", ["Home", 'Settings',"My Properties"], 
+        icons=['house', 'gear'], menu_icon="cast", default_index=1)
+    if selected == "My Properties":
+        if len(saved_properties) == 0:
+            st.error("You have no properties saved.")
+        else:
+            for i, property_index in enumerate(saved_properties):
+                if st.button(f"Property {i + 1}", key=f"property_button_{i}"):
+                    showProperty(property_index)
+        
+
+#if button("Show My Properties", o):
 
 
