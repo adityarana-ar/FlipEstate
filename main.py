@@ -95,7 +95,7 @@ def showProperty(index):
             st.write("Bed:",data.at[randomIndex, "bedroom_number"])
         with left_column:
             st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
-            st.write("Bed:",data.at[randomIndex, "bathroom_number"])
+            st.write("Bathrooms:",data.at[randomIndex, "bathroom_number"])
         with right_column:
             st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
             st.write("SQFT:",data.at[randomIndex, "living_space"])
@@ -131,18 +131,18 @@ if col2.button("Show Property"):
 
 
 
-from streamlit_option_menu import option_menu
+# from streamlit_option_menu import option_menu
 
-with st.sidebar:
-    selected = option_menu("Main Menu", ["Home", 'Settings',"My Properties"], 
-        icons=['house', 'gear'], menu_icon="cast", default_index=1)
-    if selected == "My Properties":
-        if len(saved_properties) == 0:
-            st.error("You have no properties saved.")
-        else:
-            for i, property_index in enumerate(saved_properties):
-                if st.button(f"Property {i + 1}", key=f"property_button_{i}"):
-                    showProperty(property_index)
+# with st.sidebar:
+#     selected = option_menu("Main Menu", ["Home", 'Settings',"My Properties"], 
+#         icons=['house', 'gear'], menu_icon="cast", default_index=1)
+#     if selected == "My Properties":
+#         if len(saved_properties) == 0:
+#             st.error("You have no properties saved.")
+#         else:
+#             for i, property_index in enumerate(saved_properties):
+#                 if st.button(f"Property {i + 1}", key=f"property_button_{i}"):
+#                     showProperty(property_index)
         
 
 #if button("Show My Properties", o):
