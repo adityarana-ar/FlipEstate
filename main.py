@@ -1,11 +1,24 @@
 import streamlit as st
 import requests
+import random
+import pandas as pd
+import locale  # Import the locale module
+import re
+from PIL import Image
 
-# Streamlit app title
-st.title("Google Maps Street View Viewer")
+
+
+# Streamlit app title and page layout
+st.set_page_config(page_title="*FlipEstate*", layout="centered")
+col1,col2,col3 = st.columns(3)
+with col2:
+    st.title("FlipEstate")
+
+data = pd.read_csv('predicted_prices_final.csv')
 
 # User input for address with autocomplete
-address = st.text_input("Enter an Address:", key="address")
+randomIndex = random.randint(0, len(data))
+random_address = data.at[randomIndex, 'address']
 
 # Function to convert address to coordinates using the Google Geocoding API
 def get_coordinates_from_address(address):
@@ -38,46 +51,83 @@ def display_street_view(lat, lon):
 
     if response.status_code == 200:
         # Display the Street View image
-        st.image(response.content, use_column_width=True, caption="Google Street View")
+        rounded_image_html = f"""
+        <div style="border-radius: 15px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+            <img src="data:image/png;base64,{response.content}" alt="Google Street View" style="width: 100%; height: auto;">
+        </div>
+        """
+        # Display the rounded Street View image
+        st.image(response.content, use_column_width=True)
+        
     else:
         st.error("Error fetching Street View image. Please check your address and API Key.")
 
-# Display the Street View image when the user clicks a button
-if st.button("Show Street View"):
+
+def crop_corners(image, corner_size):
+    width, height = image.size
+    top_left = image.crop((0, 0, corner_size, corner_size))
+    top_right = image.crop((width - corner_size, 0, width, corner_size))
+    bottom_left = image.crop((0, height - corner_size, corner_size, height))
+    bottom_right = image.crop((width - corner_size, height - corner_size, width, height))
+    return top_left, top_right, bottom_left, bottom_right
+
+def showProperty():
+    # User input for address with autocomplete
+    randomIndex = random.randint(0, len(data))
+    random_address = data.at[randomIndex, 'address']
     # Convert the entered address to coordinates
-    coordinates = get_coordinates_from_address(address)
+    coordinates = get_coordinates_from_address(random_address)
 
     if coordinates:
         lat, lon = coordinates
         display_street_view(lat, lon)
+        col1, col2 = st.columns(2)
+
     else:
         st.error("Invalid address or unable to retrieve coordinates.")
 
 
-import random
+   # Function to format a number as a currency string
+# Function to format a number as a currency string using regex
+def format_currency(number):
+    formatted = re.sub(r'(?<=\d)(?=(\d{3})+(?!\d))', ',', str(number))  # Add commas for thousands separators
+    return f"${formatted}"  # Add the dollar sign
+saved_properties = []
+def update():
+    st.header("Property Details")
+    
 
-# Define a dictionary of responses
-responses = {
-    "hello": ["Hi!", "Hello!", "Hey there!"],
-    "how are you": ["I'm good, thanks!", "I'm just a chatbot.", "I'm functioning well."],
-    "what's your name": ["I'm a chatbot.", "You can call me ChatGPT.", "I don't have a name."],
-    "bye": ["Goodbye!", "See you later!", "Take care!"],
-}
+ 
+    
+left_column, middle_column, right_column = st.columns(3)
 
-# Function to get a response from the chatbot
-def get_response(user_input):
-    user_input = user_input.lower()
-    for key in responses:
-        if key in user_input:
-            return random.choice(responses[key])
-    return "I'm not sure how to respond to that."
+col1, col2 = st.columns(2)
+# Display the Street View image when the user clicks a button
+if col1.button("Save Property"):
+    saved_properties.append(randomIndex)
+    showProperty()
+    
+    with middle_column:
+        st.write("Predicted Price:", format_currency(data.at[randomIndex, "predicted_price"]))
+        st.write("Bed:",data.at[randomIndex, "bedroom_number"])
+    with left_column:
+        st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
+        st.write("Bed:",data.at[randomIndex, "bathroom_number"])
+    with right_column:
+        st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
+        st.write("SQFT:",data.at[randomIndex, "living_space"])
 
-# Main chat loop
-print("Chatbot: Hi there! How can I help you today? (Type 'bye' to exit)")
-while True:
-    user_input = input("You: ")
-    if user_input.lower() == 'bye':
-        print("Chatbot: Goodbye!")
-        break
-    response = get_response(user_input)
-    print(f"Chatbot: {response}")
+ # Display the Street View image when the user clicks a button
+if col2.button("Show Property"):
+    showProperty()
+    with middle_column:
+        st.write("Predicted Price:", format_currency(data.at[randomIndex, "predicted_price"]))
+        st.write("Bed:",data.at[randomIndex, "bedroom_number"])
+    with left_column:
+        st.write("Flip Potential:", format_currency(data.at[randomIndex, "predicted_price"] - data.at[randomIndex, "price"]))
+        st.write("Bed:",data.at[randomIndex, "bathroom_number"])
+    with right_column:
+        st.write("Current Price:", format_currency(data.at[randomIndex, "price"]))
+        st.write("SQFT:",data.at[randomIndex, "living_space"])
+
+
